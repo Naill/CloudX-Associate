@@ -1,0 +1,525 @@
+Parameters:
+  KeyPair: 
+    Description: "The EC2 Key Pair to allow SSH access to the instance"
+    Type: "AWS::EC2::KeyPair::KeyName"
+    Default: "dpenkrat.aws"
+  ImageId:
+    Description: "The ImageId for EC2 Instance Ubuntu"
+    Type: "String"
+    Default: "ami-09d56f8956ab235b3"
+  VPCName:
+    Description: The name of the VPC
+    Type: String
+    Default: lab-6-3
+  EnvironmentName:
+    Description: lab-6-3
+    Type: String
+    Default: lab-6-3
+  BucketName:
+    Description: lab-6-3
+    Type: String
+    Default: lab-6-3
+
+  MyIP:
+    Description: "Allow SSH traffic from this IP. Enter your current external IP in format x.x.x.x/xx"
+    Type: "String"  
+Mappings:
+  SubnetConfig:
+    VPC:
+      CIDR: 10.20.0.0/16
+    Public0:
+      CIDR: 10.20.0.0/24
+    Public1:
+      CIDR: 10.20.1.0/24
+    Private0:
+      CIDR: 10.20.2.0/24
+    Private1:
+      CIDR: 10.20.3.0/24
+Resources:
+  InstanceSecurityGroup: 
+    Type: "AWS::EC2::SecurityGroup"
+    Properties: 
+      VpcId: 
+        Ref: VPC
+      GroupDescription: "Enable SSH access via port 22 and open 80 port"
+      SecurityGroupIngress: 
+        - IpProtocol: "tcp"
+          FromPort: "22"
+          ToPort: "22"
+          CidrIp: 
+            Ref: "MyIP"
+        - IpProtocol: "tcp"
+          FromPort: "80"
+          ToPort: "80"
+          CidrIp: 
+            Ref: "MyIP"
+      Tags:
+        - Key: Name
+          Value: lab08-3-Penkrat
+        - Key: Project
+          Value: CloudFormation
+        - Key: Role
+          Value: Security
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      CidrBlock:
+        'Fn::FindInMap':
+          - SubnetConfig
+          - VPC
+          - CIDR
+      Tags:
+        - Key: Name
+          Value: lab08-3-Penkrat
+        - Key: Project
+          Value: CloudFormation
+        - Key: Role
+          Value: Network
+  PublicSubnet0:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId:
+        Ref: VPC
+      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+      CidrBlock:
+        'Fn::FindInMap':
+          - SubnetConfig
+          - Public0
+          - CIDR
+      MapPublicIpOnLaunch: 'true'
+      Tags:
+        - Key: Name
+          Value: lab08-3-Penkrat
+        - Key: Project
+          Value: CloudFormation
+        - Key: Role
+          Value: Network
+  PublicSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId:
+        Ref: VPC
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      CidrBlock:
+        'Fn::FindInMap':
+          - SubnetConfig
+          - Public1
+          - CIDR
+      Tags:
+        - Key: Name
+          Value: lab08-3-Penkrat
+        - Key: Project
+          Value: CloudFormation
+        - Key: Role
+          Value: Network
+  PrivateSubnet0:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId:
+        Ref: VPC
+      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+      CidrBlock:
+        'Fn::FindInMap':
+          - SubnetConfig
+          - Private0
+          - CIDR
+      Tags:
+        - Key: Name
+          Value: lab08-3-Penkrat
+        - Key: Project
+          Value: CloudFormation
+        - Key: Role
+          Value: Network
+  PrivateSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId:
+        Ref: VPC
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      CidrBlock:
+        'Fn::FindInMap':
+          - SubnetConfig
+          - Private1
+          - CIDR
+      Tags:
+        - Key: Name
+          Value: lab08-3-Penkrat
+        - Key: Project
+          Value: CloudFormation
+        - Key: Role
+          Value: Network
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: lab08-3-Penkrat
+        - Key: Project
+          Value: CloudFormation
+        - Key: Role
+          Value: Network
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId:
+        Ref: VPC
+  S3Bucket:
+    Type: 'AWS::S3::Bucket'
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: lab-6-3
+  PublicRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId:
+        Ref: VPC
+      Tags:
+        - Key: Name
+          Value: lab08-3-Penkrat
+        - Key: Project
+          Value: CloudFormation
+        - Key: Role
+          Value: Network
+  PublicRoute:
+    Type: 'AWS::EC2::Route'
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: InternetGateway
+      Tags:
+        - Key: Name
+          Value: lab08-3-Penkrat
+        - Key: Project
+          Value: CloudFormation
+        - Key: Role
+          Value: Network
+  PublicSubnetRouteTableAssociation0:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId:
+        Ref: PublicSubnet0
+      RouteTableId:
+        Ref: PublicRouteTable
+
+  PublicSubnetRouteTableAssociation1:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId:
+        Ref: PublicSubnet1
+      RouteTableId:
+        Ref: PublicRouteTable
+
+  NATIP:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: lab08-3-Penkrat
+        - Key: Project
+          Value: CloudFormation
+        - Key: Role
+          Value: Network
+  NATGateway:
+    Type: 'AWS::EC2::NatGateway'
+    Properties:
+      AllocationId:
+        'Fn::GetAtt':
+          - NATIP
+          - AllocationId
+      SubnetId:
+        Ref: PublicSubnet0
+      Tags:
+        - Key: Name
+          Value: lab08-3-Penkrat
+        - Key: Project
+          Value: CloudFormation
+        - Key: Role
+          Value: Network
+  PrivateRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId:
+        Ref: VPC
+      Tags:
+        - Key: Name
+          Value: lab08-3-Penkrat
+        - Key: Project
+          Value: CloudFormation
+        - Key: Role
+          Value: Network
+  PrivateRouteToInternet:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      RouteTableId:
+        Ref: PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: NATGateway
+
+
+  PrivateSubnetRouteTableAssociation0:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId:
+        Ref: PrivateSubnet0
+      RouteTableId:
+        Ref: PrivateRouteTable
+
+  PrivateSubnetRouteTableAssociation1:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId:
+        Ref: PrivateSubnet1
+      RouteTableId:
+        Ref: PrivateRouteTable
+  PublicRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId:
+        Ref: VPC
+      Tags:
+        - Key: Name
+          Value: lab08-3-Penkrat
+        - Key: Project
+          Value: CloudFormation
+        - Key: Role
+          Value: Network
+  PublicRoute:
+    Type: 'AWS::EC2::Route'
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: InternetGateway
+
+  PublicSubnetRouteTableAssociation0:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId:
+        Ref: PublicSubnet0
+      RouteTableId:
+        Ref: PublicRouteTable
+  PublicSubnetRouteTableAssociation1:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId:
+        Ref: PublicSubnet1
+      RouteTableId:
+        Ref: PublicRouteTable
+  NATIP:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: lab08-3-Penkrat
+        - Key: Project
+          Value: CloudFormation
+        - Key: Role
+          Value: Network
+  NATGateway:
+    Type: 'AWS::EC2::NatGateway'
+    Properties:
+      AllocationId:
+        'Fn::GetAtt':
+          - NATIP
+          - AllocationId
+      SubnetId:
+        Ref: PublicSubnet0
+      Tags:
+        - Key: Name
+          Value: lab08-3-Penkrat
+        - Key: Project
+          Value: CloudFormation
+        - Key: Role
+          Value: Network
+  PrivateRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId:
+        Ref: VPC
+      Tags:
+        - Key: Name
+          Value: lab08-3-Penkrat
+        - Key: Project
+          Value: CloudFormation
+        - Key: Role
+          Value: Network
+  PrivateRouteToInternet:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      RouteTableId:
+        Ref: PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: NATGateway
+
+  PrivateSubnetRouteTableAssociation0:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId:
+        Ref: PrivateSubnet0
+      RouteTableId:
+        Ref: PrivateRouteTable
+  PrivateSubnetRouteTableAssociation1:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId:
+        Ref: PrivateSubnet1
+      RouteTableId:
+        Ref: PrivateRouteTable
+
+  PolicyS3:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: s3-read
+      Roles: 
+      - Ref: RoleS3
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Action:
+              - s3:*
+            Resource:
+              - "*"
+  RoleS3:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Role for s3 policy
+      RoleName: RoleS3
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Tags:
+        - Key: Name
+          Value: lab08-3-Penkrat
+        - Key: Project
+          Value: CloudFormation
+        - Key: Role
+          Value: Role
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties: 
+      InstanceProfileName: ec2-instance-profile
+      Path: /
+      Roles: 
+       - !Ref RoleS3
+
+
+  MyLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        IamInstanceProfile: 
+          Name: !Ref InstanceProfile
+        InstanceType: t2.micro
+        KeyName: !Ref KeyPair
+        ImageId:
+          Ref: "ImageId"
+        UserData:
+          Fn::Base64: 
+            !Sub |
+              #!/bin/bash
+              apt update -y
+              apt install apache2 -y 
+              ufw allow 'Apache'
+              echo "Hello EPAM . My hostname is $(hostname -f)" > /var/www/html/index.html
+        SecurityGroupIds:
+          -  Ref: InstanceSecurityGroup
+      LaunchTemplateName: LabLaunchTemplate
+      
+
+  LabASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier:
+        - !Ref PublicSubnet0
+        - !Ref PublicSubnet1
+      LaunchTemplate:
+        LaunchTemplateId: !Ref MyLaunchTemplate
+        Version: !GetAtt MyLaunchTemplate.LatestVersionNumber
+      MinSize: '2'
+      MaxSize: '3'
+      TargetGroupARNs:
+        - !Ref DefaultTargetGroup
+      Tags:
+        - Key: Name
+          PropagateAtLaunch: True
+          Value: lab08-3-Penkrat
+        - Key: Project
+          PropagateAtLaunch: True
+          Value: CloudFormation
+        - Key: Role
+          PropagateAtLaunch: True
+          Value: ASG
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Ref EnvironmentName
+      Subnets:
+        - Ref: PublicSubnet0
+        - Ref: PublicSubnet1
+      SecurityGroups:
+        - !Ref InstanceSecurityGroup
+      Tags:
+        - Key: Name
+          Value: lab08-3-Penkrat
+        - Key: Project
+          Value: CloudFormation
+        - Key: Role
+          Value: ELB
+
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref DefaultTargetGroup
+
+  # We define a default target group here, as this is a mandatory Parameters
+  # when creating an Application Load Balancer Listener. This is not used, instead
+  # a target group is created per-service in each service template (../services/*)
+  DefaultTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub ${EnvironmentName}-default
+      VpcId: !Ref VPC
+      Port: 80
+      Protocol: HTTP
+      Tags:
+        - Key: Name
+          Value: lab08-3-Penkrat
+        - Key: Project
+          Value: CloudFormation
+        - Key: Role
+          Value: ESB
+Outputs:
+  LoadBalancer:
+    Description: ELB address
+    Value: !GetAtt 
+      - LoadBalancer
+      - DNSName

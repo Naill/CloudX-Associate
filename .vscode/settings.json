@@ -1,0 +1,5 @@
+{
+    "yaml.schemas": {
+        "cloudformation://schema/cloudformation": "file:///Users/Dmitrii_Penkrat/Learn/CloudX%20Associate/aws-mentoring/materials/06_provisioning_services/tasks/task-6-3-4-changeset.yml"
+    }
+}
